@@ -3,7 +3,7 @@
 // ============================================
 
 // ⚠️ IMPORTANT: Înlocuiește URL-ul de mai jos cu cel primit de la Google Apps Script
-const API_URL = 'https://script.google.com/macros/s/AKfycbxBmtqBghH0qQPqC4taJhFgdWPPhu5TLYCG8PgAmkhqROBkmIUo7EeOsw550WaJDObmyg/exec';
+const API_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE';
 
 // ============================================
 // DATA & STATE
