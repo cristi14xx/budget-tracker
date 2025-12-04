@@ -4,12 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
     <meta name="theme-color" content="#0a0f1a">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Budget Pro</title>
     <link rel="manifest" href="manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Styles -->
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="features.css">
 </head>
@@ -19,6 +28,11 @@
         <header class="header">
             <div class="logo">💰 Budget Pro</div>
             <div class="header-actions">
+                <button class="icon-btn ai-btn" id="ai-btn" title="Asistent AI">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                    </svg>
+                </button>
                 <button class="icon-btn" id="sync-btn" title="Sincronizează">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
@@ -351,11 +365,50 @@
         </div>
     </div>
 
+    <!-- AI Chat Modal -->
+    <div class="modal" id="ai-modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content ai-modal-content">
+            <div class="modal-handle"></div>
+            <div class="ai-header">
+                <div class="ai-avatar">🤖</div>
+                <div class="ai-info">
+                    <div class="ai-title">Asistent Financiar AI</div>
+                    <div class="ai-subtitle">Întreabă-mă despre finanțele tale</div>
+                </div>
+                <button class="modal-close" id="ai-close">✕</button>
+            </div>
+            <div class="ai-messages" id="ai-messages">
+                <div class="ai-message bot">
+                    <div class="ai-msg-avatar">🤖</div>
+                    <div class="ai-msg-content">
+                        Bună! Sunt asistentul tău financiar. Te pot ajuta cu:
+                        <br>• 📊 Analiza cheltuielilor
+                        <br>• 💡 Sfaturi de economisire
+                        <br>• 📈 Tendințe financiare
+                        <br><br>Cu ce te pot ajuta?
+                    </div>
+                </div>
+            </div>
+            <div class="ai-prompts">
+                <button class="ai-prompt" data-prompt="Care sunt cele mai mari cheltuieli?">💰 Top cheltuieli</button>
+                <button class="ai-prompt" data-prompt="Cum pot economisi mai mult?">💡 Economisire</button>
+                <button class="ai-prompt" data-prompt="Analizează tendințele mele">📊 Analiză</button>
+            </div>
+            <div class="ai-input-area">
+                <input type="text" id="ai-input" placeholder="Scrie un mesaj...">
+                <button class="ai-send" id="ai-send">➤</button>
+            </div>
+            <div class="ai-privacy">🔒 Datele tale rămân private</div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
 
     <!-- Scripts -->
     <script src="app.js"></script>
     <script src="features.js"></script>
+    <script src="ai-assistant.js"></script>
 </body>
 </html>

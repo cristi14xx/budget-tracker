@@ -1,9 +1,25 @@
 // ============================================
-// BUDGET PRO - APP.JS
+// BUDGET PRO - APP.JS cu FIREBASE
 // ============================================
 
-// CONFIG - Înlocuiește cu URL-ul tău de la Google Apps Script
-const API_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE';
+// Firebase Config
+const firebaseConfig = {
+    apiKey: "AIzaSyB1WmFllcL533zhqG4ARD6Wx35YUksLmW4",
+    authDomain: "budget-pro-7ea05.firebaseapp.com",
+    projectId: "budget-pro-7ea05",
+    storageBucket: "budget-pro-7ea05.firebasestorage.app",
+    messagingSenderId: "789859338778",
+    appId: "1:789859338778:web:a7046602a4d37cc5465fa3"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// Enable offline persistence
+db.enablePersistence().catch((err) => {
+    console.log('Persistence error:', err);
+});
 
 const CATEGORIES = {
     expense: {
@@ -33,15 +49,16 @@ const MONTHS = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
 // STATE
 // ============================================
 let state = {
-    transactions: JSON.parse(localStorage.getItem('transactions') || '[]'),
-    budgets: JSON.parse(localStorage.getItem('budgets') || '[]'),
+    transactions: [],
+    budgets: [],
     month: new Date().getMonth(),
     year: new Date().getFullYear(),
     type: 'expense',
     editId: null,
     theme: localStorage.getItem('theme') || 'dark',
     pieChart: null,
-    lineChart: null
+    lineChart: null,
+    isOnline: navigator.onLine
 };
 
 // ============================================
@@ -50,8 +67,18 @@ let state = {
 document.addEventListener('DOMContentLoaded', () => {
     applyTheme();
     initListeners();
-    render();
+    loadFromFirebase();
     initCharts();
+    
+    // Listen for online/offline
+    window.addEventListener('online', () => {
+        state.isOnline = true;
+        toast('Conectat! Se sincronizează...', 'success');
+    });
+    window.addEventListener('offline', () => {
+        state.isOnline = false;
+        toast('Offline - datele se salvează local', 'error');
+    });
 });
 
 function applyTheme() {
@@ -81,10 +108,16 @@ function initListeners() {
         };
     }
 
-    // Sync
+    // Sync button - force refresh from Firebase
     const syncBtn = document.getElementById('sync-btn');
     if (syncBtn) {
-        syncBtn.onclick = syncData;
+        syncBtn.onclick = () => {
+            syncBtn.style.animation = 'spin 1s linear infinite';
+            loadFromFirebase().then(() => {
+                syncBtn.style.animation = '';
+                toast('Sincronizat!', 'success');
+            });
+        };
     }
 
     // Month nav
@@ -149,41 +182,77 @@ function initListeners() {
 }
 
 // ============================================
-// DATA
+// FIREBASE DATA
 // ============================================
-async function syncData() {
-    if (API_URL === 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
-        toast('Configurează API URL în app.js pentru sincronizare', 'error');
-        return;
-    }
-
-    const btn = document.getElementById('sync-btn');
-    if (btn) btn.style.animation = 'spin 1s linear infinite';
-
+async function loadFromFirebase() {
     try {
-        const res = await fetch(`${API_URL}?action=getTransactions`);
-        const data = await res.json();
-        if (data.success) {
-            state.transactions = data.data.map(t => ({
-                ...t,
-                amount: parseFloat(t.amount)
-            }));
-            localStorage.setItem('transactions', JSON.stringify(state.transactions));
-            render();
-            updateCharts();
-            toast('Sincronizat cu succes!', 'success');
-        }
-    } catch (e) {
-        console.log('Sync error:', e);
-        toast('Eroare la sincronizare', 'error');
-    }
+        // Load transactions
+        const transSnapshot = await db.collection('transactions').orderBy('date', 'desc').get();
+        state.transactions = transSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
 
-    if (btn) btn.style.animation = '';
+        // Load budgets
+        const budgetSnapshot = await db.collection('budgets').get();
+        state.budgets = budgetSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        render();
+        updateCharts();
+        
+        // Update features if available
+        if (typeof renderRecurring === 'function') renderRecurring();
+        if (typeof renderGoals === 'function') renderGoals();
+        if (typeof checkBudgetAlerts === 'function') checkBudgetAlerts();
+        
+    } catch (error) {
+        console.log('Firebase load error:', error);
+        // Fallback to localStorage
+        state.transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+        state.budgets = JSON.parse(localStorage.getItem('budgets') || '[]');
+        render();
+        updateCharts();
+    }
 }
 
-function saveLocal() {
-    localStorage.setItem('transactions', JSON.stringify(state.transactions));
-    localStorage.setItem('budgets', JSON.stringify(state.budgets));
+async function saveTransaction(trans) {
+    try {
+        if (trans.id && !trans.id.startsWith('local_')) {
+            // Update existing
+            await db.collection('transactions').doc(trans.id).set(trans);
+        } else {
+            // Add new
+            const docRef = await db.collection('transactions').add(trans);
+            trans.id = docRef.id;
+        }
+        return trans;
+    } catch (error) {
+        console.log('Save error:', error);
+        // Save to localStorage as backup
+        localStorage.setItem('transactions', JSON.stringify(state.transactions));
+        return trans;
+    }
+}
+
+async function deleteTransactionFromFirebase(id) {
+    try {
+        await db.collection('transactions').doc(id).delete();
+    } catch (error) {
+        console.log('Delete error:', error);
+    }
+}
+
+async function saveBudgetToFirebase(budget) {
+    try {
+        const budgetId = `${budget.category}_${budget.subcategory}`.replace(/\s+/g, '_');
+        await db.collection('budgets').doc(budgetId).set(budget);
+    } catch (error) {
+        console.log('Budget save error:', error);
+        localStorage.setItem('budgets', JSON.stringify(state.budgets));
+    }
 }
 
 // ============================================
@@ -196,7 +265,6 @@ function changeMonth(delta) {
     render();
     updateCharts();
     
-    // Update features if available
     if (typeof checkBudgetAlerts === 'function') {
         checkBudgetAlerts();
     }
@@ -296,7 +364,7 @@ function updateSubcategoryOptions() {
     }
 }
 
-function handleSubmit(e) {
+async function handleSubmit(e) {
     e.preventDefault();
     
     const amountInput = document.getElementById('amount');
@@ -308,71 +376,48 @@ function handleSubmit(e) {
     if (!amountInput || !categorySelect || !subcategorySelect || !dateInput) return;
     
     const amount = parseFloat(amountInput.value);
-    const trans = {
-        id: state.editId || 'local_' + Date.now(),
+    let trans = {
         date: dateInput.value,
         type: state.type === 'income' ? 'Venit' : 'Cheltuială',
         category: categorySelect.value,
         subcategory: subcategorySelect.value,
         description: descInput?.value || '',
-        amount: state.type === 'income' ? amount : -amount
+        amount: state.type === 'income' ? amount : -amount,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
     if (state.editId) {
+        trans.id = state.editId;
         const idx = state.transactions.findIndex(t => t.id === state.editId);
-        if (idx !== -1) state.transactions[idx] = trans;
+        if (idx !== -1) {
+            state.transactions[idx] = trans;
+        }
+        await saveTransaction(trans);
         toast('Tranzacție actualizată!', 'success');
     } else {
-        state.transactions.push(trans);
+        trans = await saveTransaction(trans);
+        state.transactions.unshift(trans);
         toast('Tranzacție adăugată!', 'success');
     }
 
-    saveLocal();
     closeModal();
     render();
     updateCharts();
     
-    // Update features if available
     if (typeof checkBudgetAlerts === 'function') {
         checkBudgetAlerts();
     }
-
-    // Sync if configured
-    if (API_URL !== 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
-        syncToServer(trans, state.editId ? 'update' : 'add');
-    }
 }
 
-async function syncToServer(trans, action) {
-    try {
-        const params = new URLSearchParams({
-            action: action === 'add' ? 'addTransaction' : 'updateTransaction',
-            id: trans.id,
-            date: trans.date,
-            type: trans.type,
-            category: trans.category,
-            subcategory: trans.subcategory,
-            description: trans.description,
-            amount: trans.amount
-        });
-        await fetch(`${API_URL}?${params}`);
-    } catch (e) {
-        console.log('Sync error:', e);
-    }
-}
-
-function deleteTransaction(id) {
+async function deleteTransaction(id) {
     if (!confirm('Ștergi această tranzacție?')) return;
+    
     state.transactions = state.transactions.filter(t => t.id !== id);
-    saveLocal();
+    await deleteTransactionFromFirebase(id);
+    
     render();
     updateCharts();
     toast('Tranzacție ștearsă!', 'success');
-    
-    // Sync delete if configured
-    if (API_URL !== 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
-        fetch(`${API_URL}?action=deleteTransaction&id=${id}`).catch(e => console.log(e));
-    }
 }
 
 // ============================================
@@ -601,17 +646,23 @@ function renderBudgets() {
     `).join('');
 }
 
-function updateBudget(cat, sub, val) {
+async function updateBudget(cat, sub, val) {
+    const budget = {
+        category: cat,
+        subcategory: sub,
+        budget: parseFloat(val) || 0
+    };
+    
     const idx = state.budgets.findIndex(b => b.category === cat && b.subcategory === sub);
     if (idx !== -1) {
-        state.budgets[idx].budget = parseFloat(val) || 0;
+        state.budgets[idx] = budget;
     } else {
-        state.budgets.push({ category: cat, subcategory: sub, budget: parseFloat(val) || 0 });
+        state.budgets.push(budget);
     }
-    saveLocal();
+    
+    await saveBudgetToFirebase(budget);
     render();
     
-    // Update alerts if available
     if (typeof checkBudgetAlerts === 'function') {
         checkBudgetAlerts();
     }
@@ -630,7 +681,6 @@ function initCharts() {
     const textColor = isDark ? '#9ca3af' : '#4b5563';
     const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
 
-    // Pie Chart
     state.pieChart = new Chart(pieCtx, {
         type: 'doughnut',
         data: {
@@ -657,7 +707,6 @@ function initCharts() {
         }
     });
 
-    // Line Chart
     state.lineChart = new Chart(lineCtx, {
         type: 'line',
         data: {
@@ -704,7 +753,6 @@ function updateCharts() {
     const textColor = isDark ? '#9ca3af' : '#4b5563';
     const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
 
-    // Update chart colors for theme
     state.pieChart.options.plugins.legend.labels.color = textColor;
     state.lineChart.options.scales.x.grid.color = gridColor;
     state.lineChart.options.scales.x.ticks.color = textColor;
@@ -712,7 +760,6 @@ function updateCharts() {
     state.lineChart.options.scales.y.ticks.color = textColor;
     state.lineChart.options.plugins.legend.labels.color = textColor;
 
-    // Pie Chart Data
     const filtered = state.transactions.filter(t => {
         const d = new Date(t.date);
         return d.getMonth() === state.month && d.getFullYear() === state.year && t.type === 'Cheltuială';
@@ -729,7 +776,6 @@ function updateCharts() {
     state.pieChart.data.datasets[0].data = sorted.map(([, val]) => val);
     state.pieChart.update();
 
-    // Line Chart Data - last 6 months
     const months = [];
     const expenseData = [];
     const incomeData = [];
@@ -786,3 +832,4 @@ window.updateBudget = updateBudget;
 window.CATEGORIES = CATEGORIES;
 window.formatMoney = formatMoney;
 window.toast = toast;
+window.db = db;
