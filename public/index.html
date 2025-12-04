@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0f1a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Budget Pro - Aplicația ta premium pentru gestionarea finanțelor personale cu AI">
+    
+    <title>Budget Pro</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app" id="app">
+        <!-- Loading Screen -->
+        <div class="loading-screen" id="loading-screen">
+            <div class="loading-logo">💰</div>
+            <div class="loading-text">Budget Pro</div>
+            <div class="loading-bar"><div class="loading-progress"></div></div>
+        </div>
+
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">
+                    <span class="logo-icon">💰</span>
+                    <span class="logo-text">Budget Pro</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="header-btn" id="ai-btn" title="Asistent AI">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1H2a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z"/>
+                        <circle cx="8" cy="14" r="1.5"/>
+                        <circle cx="16" cy="14" r="1.5"/>
+                        <path d="M9 18h6"/>
+                    </svg>
+                </button>
+                <button class="header-btn" id="sync-btn" title="Sincronizează">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+                        <path d="M21 3v5h-5"/>
+                    </svg>
+                </button>
+                <button class="header-btn" id="theme-btn" title="Schimbă tema">
+                    <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"/>
+                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                    </svg>
+                    <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+                        <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+                    </svg>
+                </button>
+                <button class="header-btn" id="settings-btn" title="Setări">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Connection Status -->
+        <div class="connection-status" id="connection-status">
+            <span class="status-dot"></span>
+            <span class="status-text">Offline</span>
+        </div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Quick Summary Card -->
+            <section class="hero-card">
+                <div class="hero-greeting" id="hero-greeting">Bună dimineața! 👋</div>
+                <div class="hero-balance">
+                    <div class="hero-balance-label">Balanța ta</div>
+                    <div class="hero-balance-value" id="hero-balance">0 RON</div>
+                    <div class="hero-balance-change" id="hero-balance-change">
+                        <span class="change-icon">↑</span>
+                        <span class="change-text">+0% față de luna trecută</span>
+                    </div>
+                </div>
+                <div class="hero-quick-stats">
+                    <div class="quick-stat income">
+                        <div class="quick-stat-icon">↓</div>
+                        <div class="quick-stat-info">
+                            <div class="quick-stat-label">Venituri</div>
+                            <div class="quick-stat-value" id="quick-income">0 RON</div>
+                        </div>
+                    </div>
+                    <div class="quick-stat expense">
+                        <div class="quick-stat-icon">↑</div>
+                        <div class="quick-stat-info">
+                            <div class="quick-stat-label">Cheltuieli</div>
+                            <div class="quick-stat-value" id="quick-expense">0 RON</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Month Selector -->
+            <section class="month-nav">
+                <button class="month-arrow" id="prev-month">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                </button>
+                <div class="month-display">
+                    <div class="month-name" id="current-month">Decembrie 2025</div>
+                    <div class="month-range" id="month-range">1 - 31 Dec</div>
+                </div>
+                <button class="month-arrow" id="next-month">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+            </section>
+
+            <!-- Budget Progress -->
+            <section class="budget-overview">
+                <div class="budget-header">
+                    <div class="budget-title">📊 Progres buget</div>
+                    <div class="budget-amount">
+                        <span id="budget-spent">0</span> / <span id="budget-total">10,000</span> RON
+                    </div>
+                </div>
+                <div class="budget-progress-bar">
+                    <div class="budget-progress-fill" id="budget-progress" style="width: 0%"></div>
+                    <div class="budget-progress-marker" style="left: 80%"></div>
+                </div>
+                <div class="budget-labels">
+                    <span class="budget-label-start">0%</span>
+                    <span class="budget-label-warning">80%</span>
+                    <span class="budget-label-end">100%</span>
+                </div>
+            </section>
+
+            <!-- AI Insights -->
+            <section class="ai-insights" id="ai-insights">
+                <div class="ai-insights-header">
+                    <div class="ai-badge">
+                        <span class="ai-icon">✨</span>
+                        <span>Insights AI</span>
+                    </div>
+                    <button class="ai-refresh-btn" id="refresh-insights" title="Refresh insights">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="ai-insights-content" id="ai-insights-content">
+                    <div class="ai-insight-card">
+                        <div class="insight-icon">💡</div>
+                        <div class="insight-text">Analizez datele tale financiare...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick Actions -->
+            <section class="quick-actions">
+                <button class="quick-action" data-action="expense">
+                    <div class="action-icon expense">📉</div>
+                    <span>Cheltuială</span>
+                </button>
+                <button class="quick-action" data-action="income">
+                    <div class="action-icon income">📈</div>
+                    <span>Venit</span>
+                </button>
+                <button class="quick-action" data-action="transfer">
+                    <div class="action-icon transfer">🔄</div>
+                    <span>Transfer</span>
+                </button>
+                <button class="quick-action" data-action="scan">
+                    <div class="action-icon scan">📷</div>
+                    <span>Scanează</span>
+                </button>
+            </section>
+
+            <!-- Stats Cards -->
+            <section class="stats-section">
+                <div class="section-header">
+                    <h2 class="section-title">📈 Statistici</h2>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card glass">
+                        <div class="stat-header">
+                            <span class="stat-emoji">📊</span>
+                            <span class="stat-trend up" id="daily-trend">↑</span>
+                        </div>
+                        <div class="stat-value" id="daily-avg">0 RON</div>
+                        <div class="stat-label">Media zilnică</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-header">
+                            <span class="stat-emoji">🎯</span>
+                            <span class="stat-trend" id="prediction-trend">-</span>
+                        </div>
+                        <div class="stat-value" id="prediction">0 RON</div>
+                        <div class="stat-label">Predicție lunar</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-header">
+                            <span class="stat-emoji">💸</span>
+                        </div>
+                        <div class="stat-value" id="biggest-expense">-</div>
+                        <div class="stat-label">Cea mai mare</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-header">
+                            <span class="stat-emoji">📅</span>
+                        </div>
+                        <div class="stat-value" id="days-left">0</div>
+                        <div class="stat-label">Zile rămase</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts -->
+            <section class="charts-section">
+                <div class="section-header">
+                    <h2 class="section-title">📊 Vizualizări</h2>
+                    <div class="chart-tabs">
+                        <button class="chart-tab active" data-chart="pie">Categorii</button>
+                        <button class="chart-tab" data-chart="line">Trend</button>
+                        <button class="chart-tab" data-chart="bar">Comparație</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-panel active" id="pie-panel">
+                        <canvas id="pie-chart"></canvas>
+                    </div>
+                    <div class="chart-panel" id="line-panel">
+                        <canvas id="line-chart"></canvas>
+                    </div>
+                    <div class="chart-panel" id="bar-panel">
+                        <canvas id="bar-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recurring Payments -->
+            <section class="recurring-section">
+                <div class="section-header">
+                    <h2 class="section-title">🔄 Plăți recurente</h2>
+                    <button class="section-add-btn" id="add-recurring-btn">+</button>
+                </div>
+                <div class="recurring-list" id="recurring-list">
+                    <div class="empty-state small">
+                        <span>Nicio plată recurentă</span>
+                    </div>
+                </div>
+                <div class="recurring-summary">
+                    <span>Total lunar:</span>
+                    <span class="recurring-total" id="recurring-total">0 RON</span>
+                </div>
+            </section>
+
+            <!-- Goals -->
+            <section class="goals-section">
+                <div class="section-header">
+                    <h2 class="section-title">🎯 Obiective</h2>
+                    <button class="section-add-btn" id="add-goal-btn">+</button>
+                </div>
+                <div class="goals-carousel" id="goals-list">
+                    <div class="empty-state small">
+                        <span>Niciun obiectiv setat</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Transactions -->
+            <section class="transactions-section">
+                <div class="section-header">
+                    <h2 class="section-title">💳 Tranzacții recente</h2>
+                    <button class="see-all-btn" id="see-all-transactions">Vezi toate</button>
+                </div>
+                <div class="transactions-list" id="transactions-list">
+                    <div class="empty-state">
+                        <div class="empty-icon">📝</div>
+                        <div class="empty-text">Nicio tranzacție</div>
+                        <div class="empty-hint">Apasă + pentru a adăuga</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Categories Overview -->
+            <section class="categories-section">
+                <div class="section-header">
+                    <h2 class="section-title">📂 Categorii</h2>
+                    <button class="see-all-btn" id="see-all-categories">Detalii</button>
+                </div>
+                <div class="categories-grid" id="categories-grid"></div>
+            </section>
+
+            <!-- Budget Alerts -->
+            <section class="alerts-section" id="alerts-section" style="display:none">
+                <div class="section-header">
+                    <h2 class="section-title">⚠️ Alerte buget</h2>
+                </div>
+                <div class="alerts-list" id="alerts-list"></div>
+            </section>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-view="home">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                    <polyline points="9,22 9,12 15,12 15,22"/>
+                </svg>
+                <span>Acasă</span>
+            </button>
+            <button class="nav-item" data-view="transactions">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+                </svg>
+                <span>Tranzacții</span>
+            </button>
+            <button class="nav-item add-nav" id="add-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+            </button>
+            <button class="nav-item" data-view="analytics">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 20V10M12 20V4M6 20v-6"/>
+                </svg>
+                <span>Analiză</span>
+            </button>
+            <button class="nav-item" data-view="more">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>
+                </svg>
+                <span>Mai mult</span>
+            </button>
+        </nav>
+
+        <!-- FAB (Floating Action Button) -->
+        <button class="fab" id="fab-btn" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 5v14M5 12h14"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Transaction Modal -->
+    <div class="modal" id="transaction-modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-sheet">
+            <div class="modal-handle"></div>
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">Tranzacție nouă</h3>
+                <button class="modal-close" id="modal-close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <form id="transaction-form" class="modal-form">
+                <div class="type-pills">
+                    <button type="button" class="type-pill expense active" data-type="expense">
+                        <span class="pill-icon">📉</span>
+                        <span>Cheltuială</span>
+                    </button>
+                    <button type="button" class="type-pill income" data-type="income">
+                        <span class="pill-icon">📈</span>
+                        <span>Venit</span>
+                    </button>
+                </div>
+
+                <div class="amount-input-wrapper">
+                    <span class="currency-symbol">RON</span>
+                    <input type="number" id="amount" class="amount-input" placeholder="0.00" step="0.01" required inputmode="decimal">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-field">
+                        <label>Categorie</label>
+                        <select id="category" required>
+                            <option value="">Alege categorie</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label>Subcategorie</label>
+                        <select id="subcategory" required>
+                            <option value="">Alege subcategorie</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label>Descriere (opțional)</label>
+                    <input type="text" id="description" placeholder="ex: Kaufland, salariu..." autocomplete="off">
+                </div>
+
+                <div class="form-field">
+                    <label>Data</label>
+                    <input type="date" id="date" required>
+                </div>
+
+                <div class="form-field">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="is-recurring">
+                        <span class="checkbox-text">Tranzacție recurentă</span>
+                    </label>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" id="cancel-btn">Anulează</button>
+                    <button type="submit" class="btn-primary" id="submit-btn">
+                        <span>Adaugă</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- AI Chat Modal -->
+    <div class="modal" id="ai-modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-sheet ai-chat-sheet">
+            <div class="modal-handle"></div>
+            <div class="ai-chat-header">
+                <div class="ai-avatar">
+                    <span>🤖</span>
+                </div>
+                <div class="ai-info">
+                    <h3>Asistent Financiar AI</h3>
+                    <span class="ai-status">Powered by Gemini</span>
+                </div>
+                <button class="modal-close" id="ai-modal-close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="ai-chat-messages" id="ai-messages">
+                <div class="ai-message bot">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        <p>Bună! Sunt asistentul tău financiar. Pot să te ajut cu:</p>
+                        <ul>
+                            <li>Analiză cheltuieli</li>
+                            <li>Sfaturi de economisire</li>
+                            <li>Răspunsuri la întrebări despre buget</li>
+                        </ul>
+                        <p>Cu ce te pot ajuta azi?</p>
+                    </div>
+                </div>
+            </div>
+            <div class="ai-quick-prompts">
+                <button class="quick-prompt" data-prompt="Care sunt cele mai mari cheltuieli ale mele luna asta?">💰 Top cheltuieli</button>
+                <button class="quick-prompt" data-prompt="Cum pot economisi mai mulți bani?">💡 Sfaturi economii</button>
+                <button class="quick-prompt" data-prompt="Analizează tendințele mele de cheltuieli">📊 Analiză trend</button>
+            </div>
+            <div class="ai-chat-input">
+                <input type="text" id="ai-input" placeholder="Scrie un mesaj..." autocomplete="off">
+                <button class="ai-send-btn" id="ai-send">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="ai-privacy-notice">
+                🔒 Datele tale rămân private și nu sunt trimise în exterior
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-sheet">
+            <div class="modal-handle"></div>
+            <div class="modal-header">
+                <h3 class="modal-title">⚙️ Setări</h3>
+                <button class="modal-close" id="settings-close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="settings-content">
+                <div class="settings-section">
+                    <h4>Aspect</h4>
+                    <div class="setting-item">
+                        <span>Temă</span>
+                        <select id="theme-select">
+                            <option value="dark">Întunecată</option>
+                            <option value="light">Luminoasă</option>
+                            <option value="auto">Automat</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <span>Monedă</span>
+                        <select id="currency-select">
+                            <option value="RON">RON (Lei)</option>
+                            <option value="EUR">EUR (Euro)</option>
+                            <option value="USD">USD (Dolar)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h4>Notificări</h4>
+                    <div class="setting-item">
+                        <span>Alerte buget</span>
+                        <label class="toggle">
+                            <input type="checkbox" id="alert-toggle" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <span>Reminder zilnic</span>
+                        <label class="toggle">
+                            <input type="checkbox" id="reminder-toggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h4>AI Assistant</h4>
+                    <div class="setting-item">
+                        <span>API Key Gemini</span>
+                        <input type="password" id="gemini-api-key" placeholder="Introdu API key...">
+                    </div>
+                    <p class="setting-hint">Obține gratuit de la <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></p>
+                </div>
+                <div class="settings-section">
+                    <h4>Date</h4>
+                    <button class="setting-btn danger" id="export-data">📤 Exportă date</button>
+                    <button class="setting-btn danger" id="clear-data">🗑️ Șterge toate datele</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Transactions Modal -->
+    <div class="modal fullscreen" id="all-transactions-modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-sheet fullscreen">
+            <div class="modal-header sticky">
+                <button class="back-btn" id="back-from-transactions">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+                <h3 class="modal-title">Toate tranzacțiile</h3>
+                <div class="header-spacer"></div>
+            </div>
+            <div class="filter-bar">
+                <button class="filter-chip active" data-filter="all">Toate</button>
+                <button class="filter-chip" data-filter="expense">Cheltuieli</button>
+                <button class="filter-chip" data-filter="income">Venituri</button>
+            </div>
+            <div class="search-bar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <input type="text" id="search-transactions" placeholder="Caută tranzacții...">
+            </div>
+            <div class="all-transactions-list" id="all-transactions-list"></div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+    <script src="ai-assistant.js"></script>
+</body>
+</html>

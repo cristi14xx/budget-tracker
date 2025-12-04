@@ -1,0 +1,39 @@
+{
+  "name": "Budget Pro",
+  "short_name": "Budget Pro",
+  "description": "Aplicația ta premium pentru gestionarea finanțelor personale cu AI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0f1a",
+  "theme_color": "#0a0f1a",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "ro",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Adaugă cheltuială",
+      "short_name": "Cheltuială",
+      "description": "Adaugă o cheltuială nouă",
+      "url": "/?action=expense",
+      "icons": [{ "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📉</text></svg>", "sizes": "any" }]
+    },
+    {
+      "name": "Adaugă venit",
+      "short_name": "Venit",
+      "description": "Adaugă un venit nou",
+      "url": "/?action=income",
+      "icons": [{ "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>", "sizes": "any" }]
+    }
+  ],
+  "prefer_related_applications": false
+}
